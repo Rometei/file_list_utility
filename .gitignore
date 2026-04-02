@@ -1,6 +1,0 @@
-__pycache__/
-*.pyc
-*.pyo
-*.json
-.DS_Store
-venv/
