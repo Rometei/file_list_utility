@@ -2,6 +2,7 @@ import argparse
 from pathlib import Path
 import zlib
 import os
+import json
 
 
 class FileCreator:
@@ -84,6 +85,46 @@ class FileCreator:
                 errors+=1
         print(f"Добавлено: {success}, ошибок: {errors}")
     
+    def remove_files(self, file_path_str):
+        target = str(Path(file_path_str).resolve())
+        if target in self.files:
+            del self.files[target]
+            print(f"Файл {target} удален.")
+        else:
+            print(f"Файл {target} не найден в списке.")
+    
+    def set_output_path(self, path_arg):
+        if path_arg is None or path_arg.strip() == "":
+            self.output_path = None
+            print("Путь сохранения сброшен в значение по умолчанию")
+        else:
+            new_path = Path(path_arg).resolve()
+            self.output_path = new_path
+            print(f"Путь сохранения установлен в {new_path}")
+    
+    def save(self):
+        if not self.files:
+            print("Список пуст")
+            return
+        
+        save_path = self.output_path
+        if save_path is None:
+            directory = Path(__file__).parent.resolve()
+            save_path = directory / "file_list.json"
+        else:
+            save_path = save_path.resolve()
+
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = [{"file": path, "checksum": crc} for path, crc in self.files.items()]
+        try:
+            with open(save_path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+                print(f"Сохранено в {save_path} {len(self.files)} записей")
+        except Exception as e:
+            print(f"Ошибка сохранения {e}")
+
+    
     def process_command(self, line):
         line = line.strip()
         if not line:
@@ -108,6 +149,15 @@ class FileCreator:
                 self.add_single_file(args[0])
         elif cmd == '/adddir':
             self.add_directory(args)
+        elif cmd == '/remove':
+            if len(args) != 1:
+                print("Неправильное кол-во аргументов")
+            else:
+                self.remove_files(args[0])
+        elif cmd == '/setpath':
+            self.set_output_path(args[0])
+        elif cmd == '/save':
+            self.save()
         else:
             print('Неизвестная команда')
     
