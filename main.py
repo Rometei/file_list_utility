@@ -1,6 +1,7 @@
 import argparse
 from pathlib import Path
 import zlib
+import os
 
 
 class FileCreator:
@@ -42,7 +43,46 @@ class FileCreator:
             self.files[str(path)] = crc
             print(f"Добавлен: {path} (crc32: {crc})")
         except Exception as e:
-            print(f"Ошибка {e}")     
+            print(f"Ошибка {e}")
+
+    def add_directory(self, args):
+        if not args:
+            print("Укажите путь")
+            return
+        dir_path_str = args[0]
+        recursive = '-r' in args
+
+        dir_path = Path(dir_path_str).resolve()
+        if not dir_path.is_dir():
+            print(f"{dir_path} не является директорией.")
+            return
+        
+        files_to_add = []
+        if recursive:
+            for root, _, files in os.walk(dir_path):
+                for file in files:
+                    files_to_add.append(Path(root) / file)
+        else:
+            for item in dir_path.iterdir():
+                if item.is_file():
+                    files_to_add.append(item)
+        
+        if not files_to_add:
+            print("Нет файлов для добавления")
+            return
+        
+        success = 0
+        errors = 0
+        for file_path in files_to_add:
+            try:
+                crc = self.calculate_crc32(file_path)
+                self.files[str(file_path)] = crc
+                print(f"Добавлен: {file_path} (crc32: {crc})")
+                success+=1
+            except Exception as e:
+                print(f"Не удалось добавить {file_path}: {e}")
+                errors+=1
+        print(f"Добавлено: {success}, ошибок: {errors}")
     
     def process_command(self, line):
         line = line.strip()
@@ -66,6 +106,8 @@ class FileCreator:
                 print("Неправильное кол-во аргументов")
             else:
                 self.add_single_file(args[0])
+        elif cmd == '/adddir':
+            self.add_directory(args)
         else:
             print('Неизвестная команда')
     
