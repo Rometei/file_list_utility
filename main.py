@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+import zlib
 
 
 class FileCreator:
@@ -21,6 +22,28 @@ class FileCreator:
 /exit                               - выход из программы
         """)
     
+    @staticmethod
+    def calculate_crc32(file_path):
+        if not file_path.is_file():
+            raise FileNotFoundError(f"Файл не найден: {file_path}")
+        crc = 0
+        with open(file_path, 'rb') as f:
+            while True:
+                chunk = f.read(8192)
+                if not chunk:
+                    break
+                crc = zlib.crc32(chunk, crc)
+        return format(crc & 0xFFFFFFFF, '08x')
+
+    def add_single_file(self, file_path):
+        path = Path(file_path).resolve()
+        try:
+            crc = self.calculate_crc32(path)
+            self.files[str(path)] = crc
+            print(f"Добавлен: {path} (crc32: {crc})")
+        except Exception as e:
+            print(f"Ошибка {e}")     
+    
     def process_command(self, line):
         line = line.strip()
         if not line:
@@ -38,6 +61,11 @@ class FileCreator:
         elif cmd == '/exit':
             self.running = False
             print('Выход из программы.')
+        elif cmd == '/add':
+            if len(args) != 1:
+                print("Неправильное кол-во аргументов")
+            else:
+                self.add_single_file(args[0])
         else:
             print('Неизвестная команда')
     
